@@ -1,6 +1,13 @@
 import { IContact, IEmail } from '../schema/email';
 
-type IMCPersonalization = { to: IMCContact[]; dkim_domain?: string; dkim_selector?: string; dkim_private_key?: string };
+type IMCPersonalization = {
+	to: IMCContact[];
+	cc: IMCContact[] | undefined;
+	bcc: IMCContact[] | undefined;
+	dkim_domain?: string;
+	dkim_selector?: string;
+	dkim_private_key?: string;
+};
 type IMCContact = { email: string; name: string | undefined };
 type IMCContent = { type: string; value: string };
 
@@ -8,8 +15,6 @@ interface IMCEmail {
 	personalizations: IMCPersonalization[];
 	from: IMCContact;
 	reply_to: IMCContact | undefined;
-	cc: IMCContact[] | undefined;
-	bcc: IMCContact[] | undefined;
 	subject: string;
 	content: IMCContent[];
 }
@@ -53,30 +58,36 @@ class Email {
 	 * @protected
 	 */
 	protected static convertEmail(email: IEmail): IMCEmail {
-		const personalizations: IMCPersonalization[] = [];
+		const personalizations: IMCPersonalization[] = [
+			{
+				to: [],
+				cc: undefined,
+				bcc: undefined,
+			},
+		];
 
 		// Convert 'to' field
 		const toContacts: IMCContact[] = Email.convertContacts(email.to);
-		personalizations.push({ to: toContacts });
+		personalizations[0].to = toContacts;
 
 		let replyTo: IMCContact | undefined = undefined;
-		let bccContacts: IMCContact[] | undefined = undefined;
-		let ccContacts: IMCContact[] | undefined = undefined;
 
 		// Convert 'replyTo' field
 		if (email.replyTo) {
-			const replyToContacts: IMCContact[] = Email.convertContacts(email.replyTo);
+			const replyToContacts = Email.convertContacts(email.replyTo);
 			replyTo = replyToContacts.length > 0 ? replyToContacts[0] : { email: '', name: undefined };
 		}
 
 		// Convert 'cc' field
 		if (email.cc) {
-			ccContacts = Email.convertContacts(email.cc);
+			const ccContacts = Email.convertContacts(email.cc);
+			personalizations[0].cc = ccContacts;
 		}
 
 		// Convert 'bcc' field
 		if (email.bcc) {
-			bccContacts = Email.convertContacts(email.bcc);
+			const bccContacts = Email.convertContacts(email.bcc);
+			personalizations[0].bcc = bccContacts;
 		}
 
 		const from: IMCContact = Email.convertContact(email.from);
@@ -101,8 +112,6 @@ class Email {
 		return {
 			personalizations,
 			from,
-			cc: ccContacts,
-			bcc: bccContacts,
 			reply_to: replyTo,
 			subject,
 			content,
