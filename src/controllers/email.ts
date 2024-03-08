@@ -1,6 +1,6 @@
 import { IContact, IEmail } from '../schema/email';
 
-type IMCPersonalization = { to: IMCContact[] };
+type IMCPersonalization = { to: IMCContact[]; dkim_domain?: string; dkim_selector?: string; dkim_private_key?: string };
 type IMCContact = { email: string; name: string | undefined };
 type IMCContent = { type: string; value: string };
 
@@ -19,9 +19,16 @@ class Email {
 	 *
 	 * @param email
 	 */
-	static async send(email: IEmail) {
+	static async send(email: IEmail, env: Env) {
 		// convert email to IMCEmail (MailChannels Email)
 		const mcEmail: IMCEmail = Email.convertEmail(email);
+
+		// DKIM
+		if (env.DKIM_DOMAIN && env.DKIM_SELECTOR && env.DKIM_PRIVATE_KEY) {
+			mcEmail.personalizations[0].dkim_domain = env.DKIM_DOMAIN;
+			mcEmail.personalizations[0].dkim_selector = env.DKIM_SELECTOR;
+			mcEmail.personalizations[0].dkim_private_key = env.DKIM_PRIVATE_KEY;
+		}
 
 		// send email through MailChannels
 		const resp = await fetch(
